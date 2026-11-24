@@ -1,0 +1,152 @@
+
+@pytest.fixture
+def product():
+    return Product("book", 100, "This is a book", 1000)
+
+@pytest.fixture
+def another_product():
+    return Product("pen", 5.17, "Red pen", 100)
+
+@pytest.fixture
+def cart():
+    return Cart()
+
+
+class TestProducts:
+    def test_product_check_quantity(self, product):
+        assert product.check_quantity(0) is True
+        assert product.check_quantity(500) is True
+        assert product.check_quantity(1000) is True
+        assert product.check_quantity(1001) is False
+
+    def test_product_buy(self, product):
+        product.buy(0)
+        assert product.quantity == 1000
+        product.buy(400)
+        assert product.quantity == 600
+        product.buy(600)
+        assert product.quantity == 0
+
+    def test_product_buy_more_than_available(self, product):
+        with pytest.raises(ValueError, match="Product quantity less then required"):
+            product.buy(1001)
+
+
+
+
+class TestCart:
+
+    def test_add_product_to_empty_cart_quantity_specified(self, cart, product):
+        cart.add_product(product, 15)
+
+        assert len(cart.products) == 1
+        assert product in cart.products
+        assert cart.products[product] == 15
+
+    def test_add_product_to_empty_cart_quantity_not_specified(self, cart, product)
+        cart.add_product(product)
+        assert len(cart.products) == 1
+        assert product in cart.products
+        assert cart.products[product] == 1
+
+    def test_add_same_product_to_cart(self, cart, product):
+        cart.add_product(product, 20)
+        cart.add_product(product, 10)
+
+        assert len(cart.products) == 1
+        assert product in cart.products
+        assert cart.products[product] == 30
+
+    def test_add_different_products_to_cart(self, cart, product, another_product):
+        cart.add_product(product, 20)
+        cart.add_product(another_product, 50)
+
+        assert len(cart.products) == 2
+        assert product in cart.products
+        assert another_product in cart.products
+        assert cart.products[product] == 20
+        assert cart.products[another_product] == 50
+
+    def test_remove_product_quantity_less_then_in_cart(self, cart, product):
+        cart.add_product(product, 50)
+        cart.remove_product(product, 20)
+
+        assert product in cart.products
+        assert cart.products[product] == 30
+
+    def test_remove_product_quantity_great_then_in_cart(self, cart, product):
+
+        cart.add_product(product, 50)
+        cart.remove_product(product, 51)
+
+        assert len(cart.products) == 0
+
+    def test_remove_product_quantity_equal_quantity_in_cart(self, cart, product):
+        cart.add_product(product, 50)
+        cart.remove_product(product, 50)
+
+        assert len(cart.products) == 0
+
+    def test_remove_product_quantity_not_specified(self, cart, product):
+        cart.add_product(product, 50)
+        cart.remove_product(product)
+
+        assert len(cart.products) == 0
+
+    def test_remove_missing_product_from_cart_(self, cart, product, another_product):
+        cart.add_product(product)
+        with pytest.raises(ValueError, match="There is no product in the cart"):
+            cart.remove_product(another_product)
+
+    def test_clear_not_empty_cart(self, cart, product, another_product):
+        cart.add_product(product)
+        cart.add_product(another_product)
+        cart.clear()
+
+        assert len(cart.products) == 0
+
+    def test_clear_empty_cart(self, cart):
+        cart.clear()
+
+        assert len(cart.products) == 0
+
+    def test_get_total_price_from_non_empty_cart(self, cart, product, another_product):
+        cart.add_product(product, 123)
+        cart.add_product(another_product, 337)
+
+        assert cart.get_total_price() == product.price * 123 + another_product.price * 337
+
+    def test_get_total_price_from_empty_cart(self, cart):
+        assert cart.get_total_price() == 0
+
+    def test_get_total_price_with_accurate_to_ruble(self, cart):
+        p1 = Product(name='p1', price=2.324, description='p1', quantity=100)
+        p2 = Product(name='p2', price=1.14, description='p2', quantity=100)
+        cart.add_product(p1, 17)
+        cart.add_product(p2, 9)
+
+        assert round(cart.get_total_price()) == round(p1.price * 17 + p2.price * 9)
+
+    def test_buy_in_cart_one_product(self, cart, product):
+        product_quantity = product.quantity
+        cart.add_product(product, 100)
+        cart.buy()
+
+        assert len(cart.products) == 0
+        assert product.quantity == product_quantity - 100
+
+    def test_buy_in_cart_some_products(self, cart, product, another_product):
+        product_quantity = product.quantity
+        another_product_quantity = another_product.quantity
+        cart.add_product(product, 100)
+        cart.add_product(another_product, 100)
+        cart.buy()
+
+        assert len(cart.products) == 0
+        assert product.quantity == product_quantity - 100
+        assert another_product.quantity == another_product_quantity - 100
+
+    def test_buy_product_quantity_in_cart_more_then_in_product(self, cart, product):
+        cart.add_product(product, 1200)
+        with pytest.raises(ValueError, match="There is shortage of product on stock"):
+            cart.buy()
